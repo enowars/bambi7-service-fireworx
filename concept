@@ -1,0 +1,7 @@
+wrong signature DSA, reuse of nonce
+registration with name and pubkey
+login with challenge response, 3 attempts, correct signature given after fail
+can register for firework, give location or "GeoID" = flag
+Person can request at most x fireworks
+each firework has a "best before" (-> cleanup)
+all stored in DB
