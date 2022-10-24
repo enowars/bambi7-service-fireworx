@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS
+users(
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT,
+	p INTEGER,
+	q INTEGER,
+	g INTEGER,
+	y INTEGER
+);
+
+create table if not exists
+events(
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	userid INTEGER SECONDARY KEY,
+	time TEXT,
+	wish TEXT,
+	x FLOAT,
+	y FLOAT
+);

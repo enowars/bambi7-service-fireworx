@@ -4,5 +4,5 @@ services:
     build: .
     volumes:
       - ./data/:/data:rw
-    ports: 
-      - "1812:1812" 
+    ports:
+      - "1812:1812"
