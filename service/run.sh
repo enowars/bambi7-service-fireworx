@@ -1,5 +1,6 @@
 #!/bin/sh
-touch data/store.db
-sqlite3 data/store.db < init_client.sql
-#socat TCP4-LISTEN:9122,fork,reuseaddr EXEC:'python3 /service/cry.py'
-python3 /service/fireworx.py
+
+touch /service/data/db.sqlite
+sqlite3 /service/data/db.sqlite < init.sql
+
+python3 /service/app.py
