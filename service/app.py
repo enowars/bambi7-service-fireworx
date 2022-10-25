@@ -25,9 +25,11 @@ base_template = """
 
 main_template = base_template.format(body="""
 <body>
+<div id=main class=mainpage>
     {notice}
     {navbar}
     <canvas id=canvas></canvas>
+</div>
 </body>
 <script src="static/firework.js"></script>
 <script src="static/content.js"></script>
@@ -35,10 +37,10 @@ main_template = base_template.format(body="""
 
 login_template = base_template.format(body="""
 <body>
-    {notice}
-    {navbar}
     <meta id="pow_prefix" content="{pow_prefix}">
     <div id=main class=loginpage>
+    {notice}
+    {navbar}
     <h1>Login:</h1>
     <p>Our cryptographically secure login system is based on challenge-response
     using the digital signature algorithm (DSA).<br>In other words,
@@ -349,7 +351,7 @@ async def main():
     db = await aiosqlite.connect("data/db.sqlite")
     runner = create_runner()
     await runner.setup()
-    site = web.TCPSite(runner, "127.0.0.1", 1812)
+    site = web.TCPSite(runner, "0.0.0.0", 1812)
     await site.start()
 
 if __name__ == "__main__":

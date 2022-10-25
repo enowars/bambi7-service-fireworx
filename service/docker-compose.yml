@@ -3,6 +3,6 @@ services:
   fireworx:
     build: .
     volumes:
-      - ./data/:/data:rw
+      - ./data:/service/data:rw
     ports:
       - "1812:1812"

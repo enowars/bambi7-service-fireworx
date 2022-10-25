@@ -1,19 +1,17 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
-RUN apt-get update && apt install -y python3-pip sqlite
-RUN python3 -m pip install pycryptodome aiosqlite
+RUN apt-get update && apt install -y python3-pip sqlite sudo
 
-RUN mkdir /service
+WORKDIR /tmp
+COPY requirements.txt .
+RUN python3 -m pip install -r requirements.txt
+
 WORKDIR /service
 RUN mkdir data
+COPY static static
+COPY app.py crypto.py init.sql run.sh .
 
-COPY fireworx.py crypto.py init.sql run.sh ./
+RUN useradd -u 2000 cryptodude
+RUN chmod +x run.sh
 
-RUN groupadd -g 2000 cryptogroup
-RUN useradd -m -u 2001 -g cryptogroup cryptodude
-
-RUN chown -R cryptodude /service
-RUN chmod +x fireworx.py run.sh
-USER cryptodude
-
-CMD ["/service/run.sh"]
+CMD ["/bin/bash", "-c", "chown -R cryptodude /service && sudo -u cryptodude /service/run.sh"]
