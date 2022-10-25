@@ -9,7 +9,7 @@ RUN python3 -m pip install -r requirements.txt
 WORKDIR /service
 RUN mkdir data
 COPY static static
-COPY app.py crypto.py init.sql run.sh .
+COPY app.py crypto.py init.sql run.sh ./
 
 RUN useradd -u 2000 cryptodude
 RUN chmod +x run.sh

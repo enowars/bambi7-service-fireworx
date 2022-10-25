@@ -3,14 +3,12 @@
 import random
 from hashlib import sha256
 
-import numpy as np
 from Crypto.Util import number
 from Crypto.Util.number import bytes_to_long, getPrime, inverse, long_to_bytes
 from gmpy2 import is_prime
 
 L = 1024
 N = 160
-
 
 def H(x):
     if type(x) == int:
@@ -19,16 +17,19 @@ def H(x):
 
 
 class DSAKey:
-    def __init__(self, p, q):
-        assert is_prime(p)
-        assert is_prime(p >> 1)
-        assert is_prime(q)
+    def __init__(self, L, N):
+        q = getPrime(N)
+        low = (1 << (L-1)) // q + 1
+        up = (1 << L) // q
+        while True:
+            factor = number.getRandomRange(low, up + 1)
+            p = factor * q + 1
+            if is_prime(p): break
         self.p = p
         self.q = q
         while True:
-            g = random.randint(2, p - 1)
-            if pow(g, p >> 1, p) != 1:
-                self.g = g
+            self.g = pow(number.getRandomRange(2, p), factor, p)
+            if  self.g != 1:
                 break
 
     def create(self):
@@ -48,65 +49,31 @@ class DSAKey:
 class DSAPubKey:
     def __init__(self, p, q, g, y):
         assert is_prime(p)
-        assert is_prime(p >> 1)
         assert is_prime(q)
-        assert pow(g, p >> 1, p) != 1
+        assert pow(g, q, p) == 1
+        assert g != 1
         self.p = p
         self.q = q
         self.g = g
         self.y = y
 
     def verify(self, msg, signature):
-        return True
         r, s = signature
-        w = inverse(s, q)
-        u1 = H(msg) * w % q
-        u2 = r * w % q
-        v = pow(self.g, u1, self.p) * pow(self.y, u2, self.p) % self.q
+        w = inverse(s, self.q)
+        u1 = H(msg) * w % self.q
+        u2 = r * w % self.q
+        v = (pow(self.g, u1, self.p) * pow(self.y, u2, self.p) % self.p) % self.q
         return v == r
 
 def gen_challenge():
     return bytes_to_long(random.randbytes(16))
 
-def erathosthenes(n):
-    a = np.ones(n, dtype=np.bool)
-    a[:2] = 0
-    a[4::2] = 0
-    i = 3
-    while i**2 < n:
-        if a[i]:
-            a[i**2 :: i] = 0
-        i += 1
-    return np.nonzero(a)[0]
-
-
-def strongPrime(bits):
-    primes = [int(q) for q in erathosthenes(1000)]
-
-    def check_small(n):
-        for q in primes:
-            if n % q == 0 or (n >> 1) % q == 0:
-                return False
-        return True
-
-    while True:
-        p = number.getRandomNBitInteger(bits)
-        p |= 3
-        if not check_small(p):
-            continue
-        if is_prime(p) and is_prime(p >> 1):
-            return p
-
-
 if __name__ == "__main__":
     msg = b"flag{test}"
-    # p = strongPrime(L)
-    # q = getPrime(N)
-    p = 92676707916837080041544643546156695783796494586278466927960684848720813770800172724869976900935724965677721689962100476622034781437195905550606812959008859779504390959959712094173625820795908503929928745360554208182075503527612054148041655365509247223502076734690976275491501695639503666546777198681775883063
-    q = 907650053087101861787011361850289778736933926663
-    privkey = DSAKey(p, q)
+
+    privkey = DSAKey(L,N)
     privkey.create()
     signature = privkey.sign(msg)
 
     pubkey = DSAPubKey(*privkey.public())
-    assert pubkey.verify(signature, msg)
+    assert pubkey.verify(msg, signature)
