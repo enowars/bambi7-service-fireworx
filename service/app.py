@@ -4,7 +4,7 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 import aiosqlite
 import asyncio
 from base64 import urlsafe_b64decode
-from crypto import DSAPubKey, gen_challenge
+import crypto
 from cryptography import fernet
 from datetime import datetime
 from hashlib import md5
@@ -24,21 +24,21 @@ base_template = """
 """
 
 main_template = base_template.format(body="""
-<body>
-<div id=main class=mainpage>
+<body class=mainpage>
+<div id=main>
     {notice}
     {navbar}
-    <canvas id=canvas></canvas>
 </div>
+<canvas id=canvas></canvas>
 </body>
 <script src="static/firework.js"></script>
 <script src="static/content.js"></script>
 """)
 
 login_template = base_template.format(body="""
-<body>
+<body class=loginpage>
     <meta id="pow_prefix" content="{pow_prefix}">
-    <div id=main class=loginpage>
+    <div id=main>
     {notice}
     {navbar}
     <h1>Login:</h1>
@@ -74,16 +74,16 @@ login_template = base_template.format(body="""
 """)
 
 profile_template = base_template.format(body="""
-<body>
-    <div id=main class=profilepage>
+<body class=profilepage>
+    <div id=main>
         {notice}
         {navbar}
         <div class=container>
-        <div id=proplist class=left>
+        <div id=proplist>
         <h2>Properties:</h2>
         {proplist}
         </div>
-        <div id=eventlog class=left>
+        <div id=eventlog>
         <h2>Events:</h2>
         {eventlog}
         </div>
@@ -111,12 +111,12 @@ navbar_user_template = """
 
 sockets = []
 
-def html_table(entries, header=True):
+def html_table(entries, header="top"):
     html = "<table>"
     for y, row in enumerate(entries):
         html += "<tr>"
         for x, val in enumerate(row):
-            if y == 0 and header or x == 0 and not header:
+            if y == 0 and header == "top" or x == 0 and header == "left":
                 html += "<th>" + str(val) + "</th>"
             else:
                 html += "<td>" + str(val) + "</td>"
@@ -168,7 +168,7 @@ async def handle_login(request):
         return web.HTTPFound("/")
 
     if request.method == "GET":
-        session["challenge"] = gen_challenge()
+        session["challenge"] = crypto.gen_challenge()
         notice = gen_notice(session)
         navbar = navbar_nouser_template
         session["pow_prefix"] = "".join(random.choices("0123456789abcdef", k=5))
@@ -184,21 +184,22 @@ async def handle_login(request):
         g = int(params["g"])
         y = int(params["y"])
         challenge = int(params["challenge"])
-        signature = int(params["signature"])
-    except KeyError as e:
-        print(e)
-        session["error"] = "Missing param " + str(e)
-        return web.HTTPFound("/login")
-    except ValueError:
-        session["error"] = "Invalid / missing params"
+        r,s = params["signature"].split(",")
+        signature = (int(r), int(s))
+    except (KeyError, ValueError) as e:
+        session["error"] = "Missing / invalid params"
         return web.HTTPFound("/login")
 
     if len(name) < 4:
-        session["error"] = "Invalid username"
+        session["error"] = "Username too short"
         return web.HTTPFound("/login")
 
-    if "challenge" not in session or challenge != session["challenge"]:
-        session["error"] = "Invalid challenge"
+    if "challenge" not in session:
+        session["error"] = "Invalid session"
+        return web.HTTPFound("/login")
+
+    if challenge != session["challenge"]:
+        session["error"] = "Expired challenge"
         return web.HTTPFound("/login")
 
     exists = False
@@ -207,20 +208,25 @@ async def handle_login(request):
         row = await cursor.fetchone()
         if row is not None:
             userid = row[0]
-            _p, _q, _g, _y = row[1:]
+            _p, _q, _g, _y = [int(v) for v in row[1:]]
             if (_p, _q, _g, _y) is not (p, q, g, y):
                 session["error"] = "Wrong public key"
                 return web.HTTPFound("/login")
             exists = True
 
-    pubkey = DSAPubKey(p, q, g, y)
-    #if not pubkey.verify(challenge, signature):
-    #    session["error"] = "Invalid signature"
-    #    return web.HTTPFound("/")
+    try:
+        pubkey = crypto.DSAPubKey(p, q, g, y)
+    except:
+        session["error"] = "Invalid public key"
+        return web.HTTPFound("/")
+
+    if not pubkey.verify(challenge, signature):
+        session["error"] = "Invalid signature"
+        return web.HTTPFound("/")
 
     if not exists:
         sql = "INSERT INTO users (name,p,q,g,y) values (?,?,?,?,?)"
-        res = await db.execute_insert(sql, (name, p, q, g, y))
+        res = await db.execute_insert(sql, (name, str(p), str(q), str(g), str(y)))
         userid = res[0]
         await db.commit()
 
@@ -262,8 +268,8 @@ async def handle_profile(request):
         ("pub_q", session["pubkey"]["q"]),
         ("pub_g", session["pubkey"]["g"]),
         ("pub_y", session["pubkey"]["y"]),
-    ], header=False)
-    eventlog = html_table([("time", "x", "y", "wish")] + eventlist)
+    ], header="left")
+    eventlog = html_table([("time", "x", "y", "wish")] + eventlist, header="top")
     notice = gen_notice(session)
     navbar = navbar_user_template.format(session["user"])
     html = profile_template.format(notice=notice, navbar=navbar,
@@ -273,20 +279,33 @@ async def handle_profile(request):
 async def handle_gen(request):
     session = await get_session(request)
 
-    if "pow" not in request.query:
-        return web.Response(status=400, text="Missing pow")
+    if "challenge" not in session or "pow_prefix" not in session:
+        return web.Response(status=400, text="Invalid session")
 
-    work = request.query["pow"].encode()
-    if not md5(work).hexdigest().startswith(session["pow_prefix"]):
+    try:
+        challenge = int(request.query["challenge"])
+        work = request.query["pow"]
+        pow_prefix = request.query["pow_prefix"]
+    except (KeyError, ValueError):
+        return web.Response(status=400, text="Missing / invalid params")
+
+    if challenge != session["challenge"] or pow_prefix != session["pow_prefix"]:
+        return web.Response(status=400, text="Expired request")
+
+    md5hash = md5(work.encode()).hexdigest()
+    if not md5hash.startswith(session["pow_prefix"]):
         return web.Response(status=400, text="Bad pow")
 
-    # TODO generate key
+    privkey = crypto.DSAKey(crypto.L, crypto.N)
+    pubkey = privkey.pubkey()
+    r, s = privkey.sign(session["challenge"])
+
     data = {
-        "p": "7",
-        "q": "2",
-        "g": "5",
-        "y": "11",
-        "signature": "5",
+        "p": f"{pubkey.p}",
+        "q": f"{pubkey.q}",
+        "g": f"{pubkey.g}",
+        "y": f"{pubkey.y}",
+        "signature": f"{r},{s}"
     }
     return web.Response(status=200, text=json.dumps(data))
 
@@ -302,10 +321,8 @@ async def handle_launch(request):
         x = float(params["x"])
         y = float(params["y"])
         wish = params["wish"] if "wish" in params else ""
-    except KeyError:
-        return web.Response(status=400, text="Missing params")
-    except ValueError:
-        return web.Response(status=400, text="Invalid params")
+    except (KeyError, ValueError):
+        return web.Response(status=400, text="Missing / invalid params")
 
     time = datetime.strftime(datetime.now(), "%H:%M:%S")
     sql = "INSERT INTO events (userid,time,wish,x,y) values (?,?,?,?,?)"
@@ -318,7 +335,6 @@ async def handle_launch(request):
         "y": y
     }
 
-    print("Launching..")
     for ws in sockets:
         await ws.send_str(json.dumps(event))
 

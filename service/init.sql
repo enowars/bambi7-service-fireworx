@@ -2,10 +2,10 @@ CREATE TABLE IF NOT EXISTS
 users(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	name TEXT,
-	p INTEGER,
-	q INTEGER,
-	g INTEGER,
-	y INTEGER
+	p TEXT,
+	q TEXT,
+	g TEXT,
+	y TEXT
 );
 
 create table if not exists

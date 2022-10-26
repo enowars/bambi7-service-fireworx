@@ -31,13 +31,11 @@ class DSAKey:
             self.g = pow(number.getRandomRange(2, p), factor, p)
             if  self.g != 1:
                 break
-
-    def create(self):
         self.x = random.randint(1, self.q - 1)
         self.y = pow(self.g, self.x, self.p)
 
-    def public(self):
-        return self.p, self.q, self.g, self.y
+    def pubkey(self):
+        return DSAPubKey(self.p, self.q, self.g, self.y)
 
     def sign(self, msg):
         k = H(self.y)
@@ -72,8 +70,7 @@ if __name__ == "__main__":
     msg = b"flag{test}"
 
     privkey = DSAKey(L,N)
-    privkey.create()
     signature = privkey.sign(msg)
 
-    pubkey = DSAPubKey(*privkey.public())
+    pubkey = privkey.pubkey()
     assert pubkey.verify(msg, signature)

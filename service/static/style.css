@@ -1,9 +1,6 @@
 html, body {
 	margin: 0;
 	padding: 0;
-	width: 100%;
-	height: 100%;
-	position: fixed;
 	background: #000022;
 	color: #ffffff;
 	font-family: monospace;
@@ -21,6 +18,12 @@ a:hover {
 
 td > input {
 	width: 100%;
+}
+
+body.mainpage {
+	width: 100%;
+	height: 100%;
+	position: fixed;
 }
 
 .right {
@@ -44,10 +47,6 @@ td > input {
 	border-collapse: collapse;
 }
 
-#proplist, #eventlog {
-	display: inline-block;
-}
-
 #proplist {
 	margin-right: 30px;
 }
@@ -60,8 +59,11 @@ td > input {
 	padding: 2px 10px;
 }
 
+#proplist td {
+	word-break: break-word;
+}
+
 #eventlog tr td:nth-child(4) {
-	max-width: 20vw;
 	word-break: break-word;
 }
 

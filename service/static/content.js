@@ -1,6 +1,9 @@
 
 function launch(x, y) {
 	var wish = prompt("Wish upon a firework?", "");
+	if (wish === null) {
+		wish = "";
+	}
 	var xhr = new XMLHttpRequest();
 	var params = new URLSearchParams({x: x, y: y, wish: wish})
 	xhr.open("POST", "/launch", true);
@@ -39,7 +42,8 @@ function gen_pubkey() {
 		return;
 	}
 
-	fetch("/gen?pow=" + work)
+	chall = document.querySelector("input#challenge").value
+	fetch("/gen?challenge=" + chall + "&pow_prefix=" + prefix + "&pow=" + work)
 		.then(resp => resp.text())
 		.then(data => {
 			if (data[0] != "{") {
