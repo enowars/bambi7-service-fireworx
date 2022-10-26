@@ -2,6 +2,10 @@ FROM python:3.9-buster
 
 RUN apt update && apt install -y php
 
+WORKDIR /tmp
+COPY requirements.txt .
+RUN python3 -m pip install -r requirements.txt
+
 RUN useradd -ms /bin/bash -u 1000 checker
 
 # fix pycurses terminfo warnings
