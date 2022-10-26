@@ -213,8 +213,7 @@ async def handle_login(request):
             exists = True
 
     key_match = (_p, _q, _g, _y) == (p, q, g, y)
-    expected = (True, False)
-    if (exists, key_match) is expected:
+    if (exists, key_match) is (True, False):
         session["error"] = "Wrong public key"
         return web.HTTPFound("/login")
 
