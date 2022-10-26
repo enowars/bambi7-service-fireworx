@@ -203,16 +203,20 @@ async def handle_login(request):
         return web.HTTPFound("/login")
 
     exists = False
+    _p = _q = _g = _y = None
     sql = "SELECT id,p,q,g,y FROM users WHERE name = ?"
     async with db.execute(sql, (name,)) as cursor:
         row = await cursor.fetchone()
         if row is not None:
             userid = row[0]
             _p, _q, _g, _y = [int(v) for v in row[1:]]
-            if (_p, _q, _g, _y) is not (p, q, g, y):
-                session["error"] = "Wrong public key"
-                return web.HTTPFound("/login")
             exists = True
+
+    key_match = (_p, _q, _g, _y) == (p, q, g, y)
+    expected = (True, False)
+    if (exists, key_match) is expected:
+        session["error"] = "Wrong public key"
+        return web.HTTPFound("/login")
 
     try:
         pubkey = crypto.DSAPubKey(p, q, g, y)
@@ -296,15 +300,15 @@ async def handle_gen(request):
     if not md5hash.startswith(session["pow_prefix"]):
         return web.Response(status=400, text="Bad pow")
 
-    privkey = crypto.DSAKey(crypto.L, crypto.N)
+    privkey = crypto.DSAKey.gen()
     pubkey = privkey.pubkey()
     r, s = privkey.sign(session["challenge"])
 
     data = {
-        "p": f"{pubkey.p}",
-        "q": f"{pubkey.q}",
-        "g": f"{pubkey.g}",
-        "y": f"{pubkey.y}",
+        "p": str(pubkey.p),
+        "q": str(pubkey.q),
+        "g": str(pubkey.g),
+        "y": str(pubkey.y),
         "signature": f"{r},{s}"
     }
     return web.Response(status=200, text=json.dumps(data))
