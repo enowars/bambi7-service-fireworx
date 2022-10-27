@@ -14,4 +14,4 @@ COPY app.py crypto.py init.sql run.sh ./
 RUN useradd -u 2000 cryptodude
 RUN chmod +x run.sh
 
-CMD ["/bin/bash", "-c", "chown -R cryptodude /service && sudo -u cryptodude /service/run.sh"]
+CMD ["/bin/bash", "-c", "chmod 777 -R /service/data && sudo -u cryptodude /service/run.sh"]

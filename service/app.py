@@ -1,16 +1,19 @@
 from aiohttp import web, WSCloseCode
 from aiohttp_session import setup, get_session, new_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
-import aiosqlite
-import asyncio
 from base64 import urlsafe_b64decode
-import crypto
 from cryptography import fernet
 from datetime import datetime
 from hashlib import md5
+
+import aiosqlite
+import asyncio
+import crypto
 import json
 import os
 import random
+import sys
+import traceback
 
 base_template = """
 <html>
@@ -26,7 +29,6 @@ base_template = """
 main_template = base_template.format(body="""
 <body class=mainpage>
 <div id=main>
-    {notice}
     {navbar}
 </div>
 <canvas id=canvas></canvas>
@@ -35,48 +37,75 @@ main_template = base_template.format(body="""
 <script src="static/content.js"></script>
 """)
 
-login_template = base_template.format(body="""
-<body class=loginpage>
+register_template = base_template.format(body="""
+<body class=registerpage>
     <meta id="pow_prefix" content="{pow_prefix}">
     <div id=main>
-    {notice}
     {navbar}
-    <h1>Login:</h1>
+    <h1>Register:</h1>
     <p>Our cryptographically secure login system is based on challenge-response
     using the digital signature algorithm (DSA).<br>In other words,
     <i>military-grade</i> encryption and utterly undefeatable!! 😎</p>
     <br>
-    <form id=loginform method=POST action=/login>
-        <table>
-        <tbody>
-        <tr><th>Name:</th><td><input type=text name=name id=name></td></tr>
-        <tr><th>P:</th><td><input type=text name=p id=p></td></tr>
-        <tr><th>Q:</th><td><input type=text name=q id=q></td></tr>
-        <tr><th>G:</th><td><input type=text name=g id=g></td></tr>
-        <tr><th>Y:</th><td><input type=text name=y id=y></td></tr>
-        <tr><th>Challenge:</th>
-            <td><input type=text name=challenge id=challenge
-                value="{challenge}" readonly></td></tr>
-        <tr><th>Signature:</th>
-            <td><input type=text name=signature id=signature></td></tr>
-        </tbody>
-        </table>
-        <div>
-        <a class=left onclick=gen_pubkey()>Generate</a>
-        <a class=left onclick=copy_pubkey()>Copy</a>
-        <a class=right onclick=do_login()>Login</a>
-        </div>
-    </form>
+    <div id=registerform class=form>
+    <table>
+    <tbody>
+    <tr><th>Name:</th><td><input type=text name=username id=username></td></tr>
+    <tr><th>P:</th><td><input type=text name=p id=p></td></tr>
+    <tr><th>Q:</th><td><input type=text name=q id=q></td></tr>
+    <tr><th>G:</th><td><input type=text name=g id=g></td></tr>
+    <tr><th>X:</th><td><input type=text name=x id=x></td></tr>
+    <tr><th>Y:</th><td><input type=text name=y id=y></td></tr>
+    </tbody>
+    </table>
+    <div>
+    <a class=left onclick=gen_privkey()>Generate</a>
+    <a class=left onclick=copy_privkey()>Copy</a>
+    <a class=right onclick=do_register()>Register</a>
+    </div>
+    </div>
+    <br>
+    <p id=errorlog></p>
     </div>
 </body>
 <script src="static/spark-md5.min.js"></script>
 <script src="static/content.js"></script>
 """)
 
+login_template = base_template.format(body="""
+<body class=loginpage>
+    <div id=main>
+    {navbar}
+    <h1>Login:</h1>
+    <p>Our cryptographically secure login system is based on challenge-response
+    using the digital signature algorithm (DSA).<br>In other words,
+    <i>military-grade</i> encryption and utterly undefeatable!! 😎</p>
+    <br>
+    <div id=loginform class=form>
+    <table>
+    <tbody>
+    <tr><th>Name:</th><td><input type=text name=username id=username></td></tr>
+    <tr><th>Challenge:</th>
+        <td><input type=text name=challenge id=challenge
+            value="..." readonly></td></tr>
+    <tr><th>Signature:</th>
+        <td><input type=text name=signature id=signature></td></tr>
+    </tbody>
+    </table>
+    <div>
+    <a class=right onclick=do_login()>Login</a>
+    </div>
+    </div>
+    <br>
+    <p id=errorlog></p>
+    </div>
+</body>
+<script src="static/content.js"></script>
+""")
+
 profile_template = base_template.format(body="""
 <body class=profilepage>
     <div id=main>
-        {notice}
         {navbar}
         <div class=container>
         <div id=proplist>
@@ -92,11 +121,10 @@ profile_template = base_template.format(body="""
 </body>
 """)
 
-notice_template = """<meta id=notice content="{}">"""
-
 navbar_nouser_template = """
 <div id=navbar>
 <div class=left><a href=/>Home</a></div>
+<div class=right><a href=/register>Register</a></div>
 <div class=right><a href=/login>Login</a></div>
 </div>
 """
@@ -104,12 +132,15 @@ navbar_nouser_template = """
 navbar_user_template = """
 <div id=navbar>
 <div class=left><a href=/>Home</a></div>
-<div class=right><a href=/profile>{}</a></div>
 <div class=right><a href=/logout>Logout</a></div>
+<div class=right><a href=/profile>{}</a></div>
 </div>
 """
 
 sockets = []
+
+def log(*args, **kwargs):
+    print(*args, **kwargs, file=sys.stderr)
 
 def html_table(entries, header="top"):
     html = "<table>"
@@ -127,24 +158,16 @@ def html_table(entries, header="top"):
 def html_response(html):
     return web.Response(text=html, content_type="text/html")
 
-def gen_notice(session):
-    if "error" not in session:
-        return ""
-    notice = notice_template.format(session["error"])
-    session.pop("error")
-    return notice
+def gen_navbar(session):
+    if "username" in session:
+        return navbar_user_template.format(session["username"])
+    else:
+        return navbar_nouser_template
 
 async def handle_main(request):
     session = await get_session(request)
-
-    notice = gen_notice(session)
-    if "user" in session:
-        user = session["user"]
-        navbar = navbar_user_template.format(user)
-    else:
-        navbar = navbar_nouser_template
-
-    html = main_template.format(notice=notice, navbar=navbar)
+    navbar = gen_navbar(session)
+    html = main_template.format(navbar=navbar)
     return html_response(html)
 
 async def handle_ws(request):
@@ -161,88 +184,117 @@ async def handle_ws(request):
 
     return ws
 
-async def handle_login(request):
+async def handle_register(request):
     session = await get_session(request)
 
-    if "user" in session:
-        return web.HTTPFound("/")
-
     if request.method == "GET":
-        session["challenge"] = crypto.gen_challenge()
-        notice = gen_notice(session)
-        navbar = navbar_nouser_template
+        navbar = gen_navbar(session)
         session["pow_prefix"] = "".join(random.choices("0123456789abcdef", k=5))
-        html = login_template.format(pow_prefix=session["pow_prefix"],
-                notice=notice, navbar=navbar, challenge=session["challenge"])
+        html = register_template.format(navbar=navbar,
+                pow_prefix=session["pow_prefix"])
         return html_response(html)
+
+    if "userid" in session:
+        return web.Response(status=400, text="Already logged in")
 
     try:
         params = await request.post()
-        name = params["name"]
+        username = params["username"]
         p = int(params["p"])
         q = int(params["q"])
         g = int(params["g"])
+        x = int(params["x"])
         y = int(params["y"])
+    except KeyError:
+        return web.Response(status=400, text="Missing params")
+    except ValueError:
+        return web.Response(status=400, text="Invalid params")
+
+    username = params["username"]
+    if len(username) < 4:
+        return web.Response(status=400, text="Username too short")
+
+    privkey = crypto.DSAKey(p, q, g, x, y)
+
+    try:
+        sql = "INSERT INTO users (name,p,q,g,x,y) values (?,?,?,?,?,?)"
+        vals = [str(v) for v in privkey.vals()]
+        res = await db.execute_insert(sql, (username, *vals))
+        userid = res[0]
+        await db.commit()
+    except Exception as e:
+        traceback.print_exc()
+        return web.Response(status=400, text="Registration failed (database)")
+
+    session["username"] = username
+    session["userid"] = userid
+
+    return web.Response(status=200, text="OK")
+
+async def handle_login(request):
+    session = await get_session(request)
+
+    if request.method == "GET":
+        navbar = gen_navbar(session)
+        html = login_template.format(navbar=navbar)
+        return html_response(html)
+
+    if "userid" in session:
+        return web.Response(status=400, text="Already logged in")
+
+    try:
+        params = await request.post()
+        username = params["username"]
         challenge = int(params["challenge"])
         r,s = params["signature"].split(",")
         signature = (int(r), int(s))
-    except (KeyError, ValueError) as e:
-        session["error"] = "Missing / invalid params"
-        return web.HTTPFound("/login")
+    except KeyError as e:
+        return web.Response(status=400, text="Missing param " + str(e))
+    except ValueError:
+        if "," not in params["signature"]:
+            return web.Response(status=400, text="Signature format: r,s")
+        else:
+            return web.Response(status=400, text="Invalid integers")
 
-    if len(name) < 4:
-        session["error"] = "Username too short"
-        return web.HTTPFound("/login")
+    if len(username) < 4:
+        return web.Response(status=400, text="Username too short")
 
     if "challenge" not in session:
-        session["error"] = "Invalid session"
-        return web.HTTPFound("/login")
+        return web.Response(status=400, text="Challenge not set")
 
     if challenge != session["challenge"]:
-        session["error"] = "Expired challenge"
-        return web.HTTPFound("/login")
+        return web.Response(status=400, text="Expired challenge")
+    session.pop("challenge")
 
-    exists = False
-    _p = _q = _g = _y = None
-    sql = "SELECT id,p,q,g,y FROM users WHERE name = ?"
-    async with db.execute(sql, (name,)) as cursor:
+    sql = "SELECT id,p,q,g,x,y FROM users WHERE name = ?"
+    async with db.execute(sql, (username,)) as cursor:
         row = await cursor.fetchone()
-        if row is not None:
-            userid = row[0]
-            _p, _q, _g, _y = [int(v) for v in row[1:]]
-            exists = True
-
-    key_match = (_p, _q, _g, _y) == (p, q, g, y)
-    if (exists, key_match) is (True, False):
-        session["error"] = "Wrong public key"
-        return web.HTTPFound("/login")
+        if row is None:
+            return web.Response(status=400, text="No such user")
+        userid = row[0]
+        privkey = crypto.DSAKey(*[int(v) for v in row[1:]])
+        pubkey = privkey.pubkey()
 
     try:
-        pubkey = crypto.DSAPubKey(p, q, g, y)
-    except:
-        session["error"] = "Invalid public key"
-        return web.HTTPFound("/")
+        assert pubkey.verify(challenge, signature)
+    except Exception as e:
+        if not isinstance(e, AssertionError):
+            trace = traceback.format_exc()
+            log(f"Login signature verify failed:\n{trace}")
+        text = "Verify failed! Expected signature:\n"
+        try:
+            r,s = privkey.sign(challenge)
+            text += f"{r},{s}"
+        except:
+            trace = traceback.format_exc()
+            log(f"Generating correct signature failed:\n{trace}")
+            text += "SIGN FAILED"
+        return web.Response(status=400, text=text)
 
-    if not pubkey.verify(challenge, signature):
-        session["error"] = "Invalid signature"
-        return web.HTTPFound("/")
-
-    if not exists:
-        sql = "INSERT INTO users (name,p,q,g,y) values (?,?,?,?,?)"
-        res = await db.execute_insert(sql, (name, str(p), str(q), str(g), str(y)))
-        userid = res[0]
-        await db.commit()
-
-    session["user"] = name
+    session["username"] = username
     session["userid"] = userid
-    session["pubkey"] = {
-        "p": pubkey.p,
-        "q": pubkey.q,
-        "g": pubkey.g,
-        "y": pubkey.y
-    }
 
-    return web.HTTPFound("/")
+    return web.Response(status=200, text="OK")
 
 async def handle_logout(request):
     session = await get_session(request)
@@ -251,66 +303,76 @@ async def handle_logout(request):
 
 async def handle_profile(request):
     session = await get_session(request)
+    try:
+        username = request.match_info["username"]
+    except:
+        if "username" not in session:
+            return web.HTTPFound("/login")
+        username = session["username"]
 
-    if "userid" not in session:
-        return web.HTTPFound("/")
-    userid = session["userid"]
+    sql = "SELECT p,q,g,x,y FROM users WHERE name = ?"
+    async with db.execute(sql, (username,)) as cursor:
+        row = await cursor.fetchone()
+        if row is None:
+            return web.Response(status=400, text="Missing info (database)")
+        privkey = crypto.DSAKey(*[int(v) for v in row])
 
-    eventlist = []
-    sql = "SELECT x,y,time,wish FROM events WHERE userid = ?"
-    async with db.execute(sql, (userid,)) as cursor:
-        async for row in cursor:
-            x = f"{row[0]:.3f}"
-            y = f"{row[1]:.3f}"
-            time, wish = row[2:]
-            eventlist.append((time, x, y, wish))
+    data = [("name", username),]
+    if "username" in session:
+        data += privkey.dict().items()
+    else:
+        data += privkey.pubkey().dict().items()
+    proplist = html_table(data, header="left")
 
-    proplist = html_table([
-        ("name", session["user"]),
-        ("pub_p", session["pubkey"]["p"]),
-        ("pub_q", session["pubkey"]["q"]),
-        ("pub_g", session["pubkey"]["g"]),
-        ("pub_y", session["pubkey"]["y"]),
-    ], header="left")
-    eventlog = html_table([("time", "x", "y", "wish")] + eventlist, header="top")
-    notice = gen_notice(session)
-    navbar = navbar_user_template.format(session["user"])
-    html = profile_template.format(notice=notice, navbar=navbar,
+    data = [("time", "x", "y", "wish")]
+    if "username" in session:
+        userid = session["userid"]
+        sql = "SELECT x,y,time,wish FROM events WHERE userid = ?"
+        async with db.execute(sql, (userid,)) as cursor:
+            async for row in cursor:
+                x = f"{row[0]:.3f}"
+                y = f"{row[1]:.3f}"
+                time, wish = row[2:]
+                data.append((time, x, y, wish))
+    eventlog = html_table(data, header="top")
+
+    navbar = gen_navbar(session)
+    html = profile_template.format(navbar=navbar,
             proplist=proplist, eventlog=eventlog)
     return html_response(html)
 
-async def handle_gen(request):
+async def handle_genkey(request):
     session = await get_session(request)
 
-    if "challenge" not in session or "pow_prefix" not in session:
+    if "pow_prefix" not in session:
         return web.Response(status=400, text="Invalid session")
 
     try:
-        challenge = int(request.query["challenge"])
         work = request.query["pow"]
         pow_prefix = request.query["pow_prefix"]
-    except (KeyError, ValueError):
-        return web.Response(status=400, text="Missing / invalid params")
+    except KeyError:
+        return web.Response(status=400, text="Missing param " + str(e))
 
-    if challenge != session["challenge"] or pow_prefix != session["pow_prefix"]:
-        return web.Response(status=400, text="Expired request")
+    if pow_prefix != session["pow_prefix"]:
+        return web.Response(status=400, text="Expired pow prefix")
 
     md5hash = md5(work.encode()).hexdigest()
     if not md5hash.startswith(session["pow_prefix"]):
-        return web.Response(status=400, text="Bad pow")
+        return web.Response(status=400, text="Bad proof of work")
 
-    privkey = crypto.DSAKey.gen()
-    pubkey = privkey.pubkey()
-    r, s = privkey.sign(session["challenge"])
+    try:
+        privkey = crypto.DSAKey.gen()
+    except Exception as e:
+        return web.Response(status=400, text="Private key generation failed")
 
-    data = {
-        "p": str(pubkey.p),
-        "q": str(pubkey.q),
-        "g": str(pubkey.g),
-        "y": str(pubkey.y),
-        "signature": f"{r},{s}"
-    }
+    data = {k:str(v) for k,v in privkey.dict().items()}
     return web.Response(status=200, text=json.dumps(data))
+
+async def handle_challenge(request):
+    session = await get_session(request)
+
+    session["challenge"] = crypto.gen_challenge()
+    return web.Response(text=str(session["challenge"]))
 
 async def handle_launch(request):
     session = await get_session(request)
@@ -355,11 +417,15 @@ def create_runner():
     app.add_routes([
         web.get('/', handle_main),
         web.get('/ws', handle_ws),
+        web.get("/register", handle_register),
+        web.post("/register", handle_register),
         web.get("/login", handle_login),
         web.post("/login", handle_login),
         web.get("/logout", handle_logout),
         web.get("/profile", handle_profile),
-        web.get("/gen", handle_gen),
+        web.get("/profile/{username}", handle_profile),
+        web.get("/genkey", handle_genkey),
+        web.get("/challenge", handle_challenge),
         web.post("/launch", handle_launch),
         web.static("/static", "static")
     ])

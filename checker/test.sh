@@ -8,4 +8,4 @@ export ENOCHECKER_TEST_CHECKER_PORT=1813
 export ENOCHECKER_TEST_SERVICE_ADDRESS=$ADDRESS
 export ENOCHECKER_TEST_SERVICE_PORT=1812
 
-enochecker_test -vv $@
+enochecker_test -vv "$@"

@@ -1,14 +1,15 @@
 CREATE TABLE IF NOT EXISTS
 users(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	name TEXT,
+	name TEXT UNIQUE,
 	p TEXT,
 	q TEXT,
 	g TEXT,
+	x TEXT,
 	y TEXT
 );
 
-create table if not exists
+CREATE TABLE IF NOT EXISTS
 events(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	userid INTEGER SECONDARY KEY,
@@ -17,3 +18,5 @@ events(
 	x FLOAT,
 	y FLOAT
 );
+
+CREATE INDEX users_name ON users(name);

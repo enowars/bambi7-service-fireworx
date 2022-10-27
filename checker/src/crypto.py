@@ -24,6 +24,18 @@ class DSAKey:
         self.x = x
         self.y = y
 
+    def vals(self):
+        return (self.p, self.q, self.g, self.x, self.y)
+
+    def dict(self):
+        return {
+            "p": self.p,
+            "q": self.q,
+            "g": self.g,
+            "x": self.x,
+            "y": self.y
+        }
+
     def gen(L=L, N=N):
         q = getPrime(N)
         low = (1 << (L-1)) // q + 1
@@ -52,14 +64,21 @@ class DSAKey:
 
 class DSAPubKey:
     def __init__(self, p, q, g, y):
-        assert is_prime(p)
-        assert is_prime(q)
-        assert pow(g, q, p) == 1
-        assert g != 1
         self.p = p
         self.q = q
         self.g = g
         self.y = y
+
+    def vals(self):
+        return (self.p, self.q, self.g, self.y)
+
+    def dict(self):
+        return {
+            "p": self.p,
+            "q": self.q,
+            "g": self.g,
+            "y": self.y
+        }
 
     def verify(self, msg, signature):
         r, s = signature
@@ -75,7 +94,7 @@ def gen_challenge():
 if __name__ == "__main__":
     msg = b"flag{test}"
 
-    privkey = DSAKey(L,N)
+    privkey = DSAKey.gen()
     signature = privkey.sign(msg)
 
     pubkey = privkey.pubkey()

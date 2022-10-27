@@ -24,6 +24,18 @@ class DSAKey:
         self.x = x
         self.y = y
 
+    def vals(self):
+        return (self.p, self.q, self.g, self.x, self.y)
+
+    def dict(self):
+        return {
+            "p": self.p,
+            "q": self.q,
+            "g": self.g,
+            "x": self.x,
+            "y": self.y
+        }
+
     def gen(L=L, N=N):
         q = getPrime(N)
         low = (1 << (L-1)) // q + 1
@@ -56,6 +68,17 @@ class DSAPubKey:
         self.q = q
         self.g = g
         self.y = y
+
+    def vals(self):
+        return (self.p, self.q, self.g, self.y)
+
+    def dict(self):
+        return {
+            "p": self.p,
+            "q": self.q,
+            "g": self.g,
+            "y": self.y
+        }
 
     def verify(self, msg, signature):
         r, s = signature

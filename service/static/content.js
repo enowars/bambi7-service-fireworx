@@ -29,59 +29,117 @@ function pow(beginsWith, min, max) {
 }
 
 var generating = false;
-function gen_pubkey() {
+function gen_privkey() {
 	if (generating) return;
 	generating = true;
+
+	var log = document.querySelector("p#errorlog")
+	log.innerHTML = ""
 
 	prefix = document.getElementById("pow_prefix").content;
 	console.log("POW prefix:", prefix)
 	work = pow(prefix, 0, 10000000);
 	if (work === null) {
-		alert("Proof of Work failed, try again");
+		log.innerHTML = "Proof of Work failed, try again";
 		generating = false;
 		return;
 	}
 
-	chall = document.querySelector("input#challenge").value
-	fetch("/gen?challenge=" + chall + "&pow_prefix=" + prefix + "&pow=" + work)
+	fetch("/genkey?pow_prefix=" + prefix + "&pow=" + work)
 		.then(resp => resp.text())
 		.then(data => {
 			if (data[0] != "{") {
-				alert("Generation failed: " + data);
-				console.log("Generation error: " + data);
+				log.innerHTML = "Generation failed:\n" + data;
 				return;
 			}
 			data = JSON.parse(data);
 			document.querySelector("input#p").value = data["p"]
 			document.querySelector("input#q").value = data["q"]
 			document.querySelector("input#g").value = data["g"]
+			document.querySelector("input#x").value = data["x"]
 			document.querySelector("input#y").value = data["y"]
-			document.querySelector("input#signature").value = data["signature"]
 		});
 
 	generating = false;
 }
 
-function copy_pubkey() {
+function copy_privkey() {
 	text = document.querySelector("input#name").value + "\n";
 	text += document.querySelector("input#p").value + "\n";
 	text += document.querySelector("input#q").value + "\n";
 	text += document.querySelector("input#g").value + "\n";
+	text += document.querySelector("input#x").value + "\n";
 	text += document.querySelector("input#y").value + "\n";
 	navigator.clipboard.writeText(text);
 }
 
+function set_challenge() {
+	fetch("/challenge").then(r => r.text()).then(text => {
+		document.querySelector("input#challenge").value = text;
+	})
+}
+
 function do_login() {
-	var loginform = document.getElementById("loginform");
-	loginform.submit();
+	username = document.querySelector("input#username").value;
+	challenge = document.querySelector("input#challenge").value;
+	signature = document.querySelector("input#signature").value;
+	var params = new URLSearchParams({
+		username: username,
+		challenge: challenge,
+		signature: signature
+	})
+
+	var log = document.querySelector("p#errorlog")
+	log.innerHTML = ""
+
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", "/login", true);
+	xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xhr.onload = () => {
+		if (xhr.status == 200) {
+			window.location.replace("/");
+		} else {
+			log.innerHTML = xhr.responseText;
+			set_challenge()
+		}
+	}
+	xhr.send(params.toString());
+}
+
+function do_register() {
+	username = document.querySelector("input#username").value;
+	p = document.querySelector("input#p").value;
+	q = document.querySelector("input#q").value;
+	g = document.querySelector("input#g").value;
+	x = document.querySelector("input#x").value;
+	y = document.querySelector("input#y").value;
+	var params = new URLSearchParams({
+		username: username,
+		p: p,
+		q: q,
+		g: g,
+		x: x,
+		y: y
+	})
+
+	var log = document.querySelector("p#errorlog")
+	log.innerHTML = ""
+
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", "/register", true);
+	xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xhr.onload = () => {
+		if (xhr.status == 200) {
+			window.location.replace("/");
+		} else {
+			log.innerHTML = xhr.responseText;
+		}
+	}
+	xhr.send(params.toString());
 }
 
 function event_handler() {
 	let socket = new WebSocket("ws://localhost:1812/ws");
-
-	socket.onopen = function(e) {
-		// alert("Socket connected");
-	}
 
 	socket.onmessage = function(e) {
 		event = JSON.parse(e.data);
@@ -89,10 +147,6 @@ function event_handler() {
 			fireworks.push(new Firework(
 				canvas.width / 2, canvas.height,
 				canvas.width * event.x, canvas.height * event.y));
-	}
-
-	socket.onclose = function(e) {
-		// alert("Socket closed");
 	}
 }
 
@@ -110,8 +164,8 @@ window.onload = function() {
 		event_handler()
 	}
 
-	notice = document.getElementById("notice");
-	if (notice !== null) {
-		alert(notice.content);
+	loginform = document.getElementById("loginform")
+	if (loginform !== null) {
+		set_challenge();
 	}
 }

@@ -7,15 +7,16 @@ services:
     environment:
       - MONGO_ENABLED=1
       - MONGO_HOST=fireworx-mongo
-      - MONGO_PORT=27017
+      - MONGO_PORT=1814
       - MONGO_USER=fireworx_checker
       - MONGO_PASSWORD=fireworx_checker
   fireworx-mongo:
     image: mongo
+    command: mongod --port 1814
     volumes:
       - ./data:/data/db
     ports:
-      - 27017:27017
+      - 1814:1814
     environment:
       MONGO_INITDB_ROOT_USERNAME: fireworx_checker
       MONGO_INITDB_ROOT_PASSWORD: fireworx_checker
