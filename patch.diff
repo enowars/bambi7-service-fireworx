@@ -15,7 +15,7 @@ index 35c67e5..2799c23 100644
  
      def verify(self, msg, signature):
          r, s = signature
-+        if r == 0 and (s == 1 or s % self.q == 0):
++        if r == 1 and s % self.q == 0:
 +            return False
          w = inverse(s, self.q)
          u1 = H(msg) * w % self.q
