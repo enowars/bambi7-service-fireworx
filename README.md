@@ -10,7 +10,7 @@ that can be viewed by users on the profile page.
 
 ## Vulnerabilities
 
-The signature $(0,1)$ passes `verify` for any public key and can be used
+The signature $(1,0)$ passes `verify` for any public key and can be used
 to login as the flag user.
 
 A nonce-reuse in the key generation allows forging signatures and to login
