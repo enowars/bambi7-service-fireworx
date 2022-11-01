@@ -170,13 +170,18 @@ quotes = [
     "given power by the people. Alone, a symbol is meaningless, but with "
     "enough people, exploiting a service can change the world.",
     "Every exploit is special.",
-    "Users shouldn't be afraid of services. Services should be afraid "
+    "Users shouldn't be afraid of their services. Services should be afraid "
     "of their users.",
     "She used to tell me that god was in the code.",
     "Your pretty service took so long to build, now, with a snap of "
     "history's fingers, down it goes.",
     "Challenge authors use unsafe code to teach safe code.",
-    "You wear cat ears for so long, you forget who you were underneath them."
+    "You wear cat ears for so long, you forget who you were underneath them.",
+    "Every time I've seen this code change, it's always been for the worse.",
+    "I remember our teacher telling us that writing unsafe code was an adolescent phase people outgrew. Sara did. I didn't.",
+    "Strength through Unity, Unity through good code!",
+    "Bugs will plunge this country back into chaos and I will not let that happen.",
+		"There's no flesh or blood within this code to kill. There's only an idea. Ideas are bulletproof."
 ]
 
 sockets = []
