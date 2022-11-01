@@ -136,7 +136,7 @@ inspire_template = base_template.format(body="""
 """)
 
 inspire_navbar_html = """
-<div class="glitch">
+<div id="glitch">
     <a href="/inspire">
     <span class="glitch__color glitch__color--red">Inspire</span>
     <span class="glitch__color glitch__color--blue">Inspire</span>
