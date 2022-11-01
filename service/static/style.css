@@ -120,6 +120,7 @@ p#errorlog {
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
+	background: transparent;
 }
 
 input#challenge {
@@ -129,4 +130,16 @@ input#challenge {
 #quote {
 	margin: 100px 10%;
 	font-size: 13pt;
+}
+
+#canvas_overlay {
+	font-size: 3vw;
+	opacity: 30%;
+	text-align: center;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 50vh;
+	left: 0px;
+	z-index: -1;
 }

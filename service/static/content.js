@@ -151,9 +151,11 @@ function event_handler() {
 }
 
 window.onload = function() {
+    var overlay = document.getElementById("canvas_overlay");
 	var canvas = document.getElementById("canvas");
 	if (canvas !== null) {
 		canvas.addEventListener("mousedown", function(e) {
+			overlay.hidden = true;
 			mx = e.pageX - canvas.offsetLeft;
 			my = e.pageY - canvas.offsetTop;
 			launch(mx / canvas.clientWidth, my / canvas.clientHeight);

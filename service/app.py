@@ -32,6 +32,7 @@ main_template = base_template.format(body="""
 <div id=main>
     {navbar}
 </div>
+<div id=canvas_overlay>Click here!</div>
 <canvas id=canvas></canvas>
 </body>
 <script src="static/firework.js"></script>
