@@ -19,4 +19,5 @@ events(
 	y FLOAT
 );
 
-CREATE INDEX users_name ON users(name);
+CREATE INDEX IF NOT EXISTS
+users_name ON users(name);

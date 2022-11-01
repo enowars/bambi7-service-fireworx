@@ -21,6 +21,7 @@ base_template = """
     <title>Fireworx</title>
     <link rel="icon" type="image/x-icon" href="/static/favicon.png">
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/glitch.css">
 </head>
 {body}
 </html>
@@ -121,6 +122,31 @@ profile_template = base_template.format(body="""
 </body>
 """)
 
+inspire_template = base_template.format(body="""
+<body class=quotepage>
+    <div id=main>
+        {navbar}
+        <div id=quote>
+        <p>{quote}</p>
+        - V
+        </div>
+    </div>
+</body>
+""")
+
+inspire_navbar_html = """
+<div class="glitch">
+    <a href="/inspire">
+    <span class="glitch__color glitch__color--red">Inspire</span>
+    <span class="glitch__color glitch__color--blue">Inspire</span>
+    <span class="glitch__color glitch__color--green">Inspire</span>
+    <span class="glitch__color glitch__main">Inspire</span>
+    <span class="glitch__line glitch__line--first"></span>
+    <span class="glitch__line glitch__line--second"></span>
+    </a>
+</div>
+"""
+
 navbar_nouser_template = """
 <div id=navbar>
 <div class=left><a href=/>Home</a></div>
@@ -132,10 +158,25 @@ navbar_nouser_template = """
 navbar_user_template = """
 <div id=navbar>
 <div class=left><a href=/>Home</a></div>
+{inspire}
 <div class=right><a href=/logout>Logout</a></div>
-<div class=right><a href=/profile>{}</a></div>
+<div class=right><a href=/profile>{username}</a></div>
 </div>
 """
+
+quotes = [
+    "The service is a symbol, as is the act of exploiting it. Symbols are "
+    "given power by the people. Alone, a symbol is meaningless, but with "
+    "enough people, exploiting a service can change the world.",
+    "Every exploit is special.",
+    "Users shouldn't be afraid of services. Services should be afraid "
+    "of their users.",
+    "She used to tell me that god was in the code.",
+    "Your pretty service took so long to build, now, with a snap of "
+    "history's fingers, down it goes.",
+    "Challenge authors use unsafe code to teach safe code.",
+    "You wear cat ears for so long, you forget who you were underneath them."
+]
 
 sockets = []
 
@@ -160,7 +201,12 @@ def html_response(html):
 
 def gen_navbar(session):
     if "username" in session:
-        return navbar_user_template.format(session["username"])
+        if random.randint(0, 5) == 0:
+            inspire = inspire_navbar_html
+        else:
+            inspire = ""
+        return navbar_user_template.format(
+            inspire=inspire, username=session["username"])
     else:
         return navbar_nouser_template
 
@@ -301,6 +347,13 @@ async def handle_logout(request):
     session.invalidate()
     return web.HTTPFound("/")
 
+async def handle_inspire(request):
+    session = await get_session(request)
+    navbar = gen_navbar(session)
+    quote = random.choice(quotes)
+    html = inspire_template.format(navbar=navbar, quote=quote)
+    return html_response(html=html)
+
 async def handle_profile(request):
     session = await get_session(request)
     try:
@@ -422,6 +475,7 @@ def create_runner():
         web.get("/login", handle_login),
         web.post("/login", handle_login),
         web.get("/logout", handle_logout),
+        web.get("/inspire", handle_inspire),
         web.get("/profile", handle_profile),
         web.get("/profile/{username}", handle_profile),
         web.get("/genkey", handle_genkey),

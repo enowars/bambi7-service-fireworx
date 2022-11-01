@@ -63,6 +63,10 @@ body.mainpage {
 	border-collapse: collapse;
 }
 
+.secret {
+	display: hidden;
+}
+
 p#errorlog {
 	font-weight: bold;
 	white-space: pre-wrap;
@@ -120,4 +124,9 @@ p#errorlog {
 
 input#challenge {
 	pointer-events: none;
+}
+
+#quote {
+	margin: 100px 10%;
+	font-size: 13pt;
 }
