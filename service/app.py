@@ -178,10 +178,12 @@ quotes = [
     "Challenge authors use unsafe code to teach safe code.",
     "You wear cat ears for so long, you forget who you were underneath them.",
     "Every time I've seen this code change, it's always been for the worse.",
-    "I remember our teacher telling us that writing unsafe code was an adolescent phase people outgrew. Sara did. I didn't.",
+    "I remember our teacher telling us that writing unsafe code was an "
+    "adolescent phase people outgrew. Sara did. I didn't.",
     "Strength through Unity, Unity through good code!",
     "Bugs will plunge this country back into chaos and I will not let that happen.",
-		"There's no flesh or blood within this code to kill. There's only an idea. Ideas are bulletproof."
+    "There's no flesh or blood within this code to kill. There's only an idea. "
+    "Ideas are bulletproof."
 ]
 
 sockets = []
