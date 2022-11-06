@@ -496,6 +496,7 @@ def create_runner():
 async def main():
     global db
     db = await aiosqlite.connect("data/db.sqlite")
+    await db.execute("PRAGMA foreign_keys = ON")
     runner = create_runner()
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", 1812)

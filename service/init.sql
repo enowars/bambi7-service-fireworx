@@ -1,6 +1,6 @@
-CREATE TABLE IF NOT EXISTS
-users(
+CREATE TABLE IF NOT EXISTS users(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	creat INTEGER DEFAULT null,
 	name TEXT UNIQUE,
 	p TEXT,
 	q TEXT,
@@ -9,15 +9,20 @@ users(
 	y TEXT
 );
 
-CREATE TABLE IF NOT EXISTS
-events(
+CREATE TABLE IF NOT EXISTS events(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	userid INTEGER SECONDARY KEY,
 	time TEXT,
 	wish TEXT,
 	x FLOAT,
-	y FLOAT
+	y FLOAT,
+	FOREIGN KEY(userid) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS
-users_name ON users(name);
+CREATE INDEX IF NOT EXISTS users_name ON users(name);
+
+CREATE TRIGGER IF NOT EXISTS users_creat
+AFTER INSERT ON users
+BEGIN
+    UPDATE users SET creat = strftime("%s", "now") WHERE creat IS null;
+END
