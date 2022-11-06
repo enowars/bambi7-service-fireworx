@@ -139,7 +139,7 @@ function do_register() {
 }
 
 function event_handler() {
-	let socket = new WebSocket("ws://localhost:1812/ws");
+	let socket = new WebSocket("ws://" + document.location.hostname + ":1812/ws");
 
 	socket.onmessage = function(e) {
 		event = JSON.parse(e.data);
