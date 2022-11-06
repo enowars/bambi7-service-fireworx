@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS users(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	creat INTEGER DEFAULT null,
+	creat INTEGER DEFAULT NULL,
 	name TEXT UNIQUE,
 	p TEXT,
 	q TEXT,
@@ -24,5 +24,5 @@ CREATE INDEX IF NOT EXISTS users_name ON users(name);
 CREATE TRIGGER IF NOT EXISTS users_creat
 AFTER INSERT ON users
 BEGIN
-    UPDATE users SET creat = strftime("%s", "now") WHERE creat IS null;
+    UPDATE users SET creat = strftime("%s", "now") WHERE creat IS NULL;
 END
