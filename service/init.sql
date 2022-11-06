@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS users(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	creat INTEGER DEFAULT NULL,
+	delet INTEGER DEFAULT NULL,
 	name TEXT UNIQUE,
 	p TEXT,
 	q TEXT,
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS events(
 
 CREATE INDEX IF NOT EXISTS users_name ON users(name);
 
-CREATE TRIGGER IF NOT EXISTS users_creat
+CREATE TRIGGER IF NOT EXISTS users_delete_by
 AFTER INSERT ON users
 BEGIN
-    UPDATE users SET creat = strftime("%s", "now") WHERE creat IS NULL;
-END
+    UPDATE users SET delet = strftime("%s", "now") + 780 WHERE delet IS NULL;
+END;
