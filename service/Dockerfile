@@ -9,9 +9,9 @@ RUN python3 -m pip install -r requirements.txt
 WORKDIR /service
 RUN mkdir data
 COPY static static
-COPY app.py crypto.py init.sql run.sh ./
+COPY app.py crypto.py init.sql entrypoint.sh ./
 
 RUN useradd -u 2000 cryptodude
-RUN chmod +x run.sh
+RUN chmod +x entrypoint.sh
 
-CMD ["/bin/bash", "-c", "chmod 777 -R /service/data && sudo -u cryptodude /service/run.sh"]
+ENTRYPOINT /service/entrypoint.sh

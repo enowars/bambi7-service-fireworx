@@ -4,5 +4,10 @@ services:
     build: .
     volumes:
       - ./data:/service/data:rw
+    environment:
+      - REDIS_HOST=fireworx-redis
+      - REDIS_PORT=6379
     ports:
       - "1812:1812"
+  fireworx-redis:
+    image: redis

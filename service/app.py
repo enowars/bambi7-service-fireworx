@@ -1,11 +1,14 @@
 from aiohttp import web, WSCloseCode
-from aiohttp_session import setup, get_session, new_session
+from aiohttp_session import get_session, new_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from base64 import urlsafe_b64decode
 from cryptography import fernet
 from datetime import datetime
 from hashlib import md5
 
+import aiohttp_session
+import aiohttp_session.redis_storage
+import aioredis
 import aiosqlite
 import asyncio
 import crypto
@@ -466,15 +469,13 @@ async def handle_launch(request):
 
     return web.Response(status=200)
 
-def create_runner():
+async def create_runner():
     app = web.Application()
-    if os.path.exists("data/.secret_key"):
-        secret_key = open("data/.secret_key", "rb").read()
-    else:
-        fernet_key = fernet.Fernet.generate_key()
-        secret_key = urlsafe_b64decode(fernet_key)
-        open("data/.secret_key", "wb+").write(secret_key)
-    setup(app, EncryptedCookieStorage(secret_key))
+    redis_host = os.getenv("REDIS_HOST")
+    redis_port = os.getenv("REDIS_PORT")
+    redis = await aioredis.from_url(f"redis://{redis_host}:{redis_port}")
+    storage = aiohttp_session.redis_storage.RedisStorage(redis)
+    aiohttp_session.setup(app, storage)
     app.add_routes([
         web.get('/', handle_main),
         web.get('/ws', handle_ws),
@@ -497,7 +498,7 @@ async def main():
     global db
     db = await aiosqlite.connect("data/db.sqlite")
     await db.execute("PRAGMA foreign_keys = ON")
-    runner = create_runner()
+    runner = await create_runner()
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", 1812)
     await site.start()

@@ -10,4 +10,5 @@ while true; do
 	sleep 60
 done &
 
-python3 /service/app.py
+chmod -R 777 /service/data
+sudo -u cryptodude -E python3 /service/app.py
