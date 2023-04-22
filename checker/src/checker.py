@@ -114,6 +114,35 @@ async def do_login(logger: LoggerAdapter, client: AsyncClient,
     r = await client.post("/login", data=data)
     assert_status_code(logger, r, code=200)
 
+async def do_login_bad(logger: LoggerAdapter, client: AsyncClient,
+        username: str, privkey: crypto.DSAKey) -> None:
+
+    r = await client.get("/challenge")
+    assert_status_code(logger, r, code=200)
+    try:
+        challenge = int(r.text)
+    except ValueError:
+        raise MumbleException("Invalid challenge received")
+
+    sig_r, sig_s = privkey.sign(challenge)
+    sig_bad_r = random.randint(2, pow(10, 49))
+    sig_bad_s = random.randint(2, pow(10, 49))
+
+    data = {
+        "username": username,
+        "challenge": challenge,
+        "signature": f"{sig_bad_r},{sig_bad_s}"
+    }
+    r = await client.post("/login", data=data)
+    assert(r.status_code != 200)
+
+    try:
+        sig = r.text.split("\n")[-1]
+        r,s = (int(v) for v in sig.split(","))
+        assert(sig_r == r and sig_s == s)
+    except (KeyError, ValueError):
+        raise MumbleException("Correct sig missing from login error")
+
 async def do_launch(logger: LoggerAdapter,
         client: AsyncClient, wish: str) -> None:
     data = {
@@ -204,6 +233,7 @@ async def getnoise(task: GetnoiseCheckerTaskMessage,
 
     keyvals = [int(v) for v in keyvals]
     privkey = crypto.DSAKey(*keyvals)
+    await do_login_bad(logger, client, username, privkey)
     await do_login(logger, client, username, privkey)
 
     data = await do_profile(logger, client)
