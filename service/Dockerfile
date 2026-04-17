@@ -13,5 +13,6 @@ COPY app.py crypto.py init.sql entrypoint.sh ./
 
 RUN useradd -u 2000 cryptodude
 RUN chmod +x entrypoint.sh
+RUN chmod -R +r /service
 
 ENTRYPOINT /service/entrypoint.sh
