@@ -1,6 +1,6 @@
-FROM python:3.9-buster
+FROM python:3.9-trixie
 
-RUN apt update && apt install -y php
+RUN apt update -y && apt install -y php
 
 WORKDIR /tmp
 COPY requirements.txt .

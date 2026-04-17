@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-RUN apt-get update && apt install -y python3-pip sqlite sudo
+RUN apt-get update -y && apt install -y python3-pip sqlite sudo
 
 WORKDIR /tmp
 COPY requirements.txt .
