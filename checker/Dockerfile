@@ -1,4 +1,4 @@
-FROM python:3.9-trixie
+FROM python:3.11-trixie
 
 RUN apt update -y && apt install -y php
 
