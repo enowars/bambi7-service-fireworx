@@ -1,4 +1,4 @@
-cryptography==38.0.1
-numpy==1.23.3
+cryptography
+numpy
 gmpy2
-pycryptodome==3.15.0
+pycryptodome
